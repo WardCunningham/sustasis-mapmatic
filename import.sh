@@ -3,7 +3,7 @@
 
 (
   cd $2/pages
-  ls | grep -v welcome-visitors | while read i; do rm $i; done
+  ls | grep -v welcome-visitors | grep -v table-of-contents | while read i; do rm $i; done
 )
 cat $1 |
 jq -c -r 'keys[] as $slug|"\($slug)\n\(.[$slug])"' |
