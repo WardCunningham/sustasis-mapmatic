@@ -7,20 +7,26 @@ function each (element, tag, fun) {
   }
 }
 
-let r = {}
-let s = {type:'preface', body:[]}
-let t = s.body
-r['PREFACE']=s
-let n = 0
-each(document, 'p', paragraph)
+build()
+
+function build () {
+let r = parse()
 console.log(r)
 typecheck(r)
 e = generate(r)
 console.log('export',e)
 var json = JSON.stringify(e, null, '  ')
 download(json, 'export.json', 'text/plain')
+}
 
-
+function parse () {
+  let r = {}
+  let s = {type:'preface', body:[]}
+  let t = s.body
+  r['PREFACE']=s
+  let n = 0
+  each(document, 'p', paragraph)
+  return r
 
 function paragraph (p) {
   let c = p.getAttribute('class')||'null'
@@ -79,6 +85,7 @@ function resolve (p) {
   })
   return result
 }
+}
 
 
 function typecheck(r) {
@@ -99,7 +106,7 @@ function typecheck(r) {
 }
 
 function generate(r) {
-  e = {}
+  let e = {}
   for (k in r) {
     let s = r[k]
     if (k == 'CASE STUDIES') break
