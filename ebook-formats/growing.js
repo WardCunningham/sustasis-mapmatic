@@ -1,7 +1,7 @@
 console.log('starting')
 
-function each (tag, fun) {
-  let elements = document.getElementsByTagName(tag)
+function each (element, tag, fun) {
+  let elements = element.getElementsByTagName(tag)
   for (var i = 0; i<elements.length; i++) {
     fun(elements[i])
   }
@@ -12,7 +12,7 @@ let s = {type:'preface', body:[]}
 let t = s.body
 r['PREFACE']=s
 let n = 0
-each('p', paragraph)
+each(document, 'p', paragraph)
 console.log(r)
 typecheck(r)
 e = generate(r)
@@ -21,8 +21,10 @@ var json = JSON.stringify(e, null, '  ')
 download(json, 'export.json', 'text/plain')
 
 
+
 function paragraph (p) {
   let c = p.getAttribute('class')||'null'
+
   switch (c.split(' ')[0]) {
     case 'Titles_Section-title':
       console.log('section',n++, p.innerText)
@@ -30,11 +32,11 @@ function paragraph (p) {
       break
     case 'Titles_Chapter-title':
       console.log('chapter',n++, p.innerText)
-      r[p.innerText.replace(/\n/,' ')] = s = {type:'chapter', prob:[], soln:[], disc:[], when:[], then:[]}
+      r[p.innerText.replace(/\n/,' ')] = s = {type:'chapter', prob:[], soln:[], disc:[], when:[], then:[], links:[]}
       t = s.prob
       break
     case 'Body_upward-tekst':
-      s.when.push(p.innerText)
+      s.when.push(resolve(p))
       break
     case 'Body_Therefore':
       console.log(p.innerText)
@@ -46,19 +48,38 @@ function paragraph (p) {
       }
       break
     case 'Body_Solution':
-      t.push(p.innerText)
+      t.push(p.innerText.replace(/Problem-statement: /,''))
       if(t==s.prob){
         t=s.disc
       }
       break
     case 'Body_body-text':
-      t.push(p.innerText)
+      if (t==s.then) {
+        console.log(p)
+        t.push(resolve(p))
+      } else {
+        t.push(p.innerText)
+      }
       break
     default:
       // console.log('   ', c)
   }
   console.log('      ', c,p.innerText.substring(0,30))
 }
+
+function resolve (p) {
+  result = p.innerText
+  each(p,'span',(x) => {
+    m = x.innerText.match(/[A-Z0-9\.-]+( [A-Za-z0-9\.-]+)*/)
+    if (m && m[0].length>5) {
+      let plink = `[[${titlecase(m[0])}]]`
+      result = result.replace(m[0],plink)
+      s.links.push(slug(m[0]))
+    }
+  })
+  return result
+}
+
 
 function typecheck(r) {
   let csv = ['type,chapter,checks']
@@ -87,13 +108,14 @@ function generate(r) {
       case 'chapter':
         let p = {title: titlecase(k), story:[]}
         e[slug(k)] = p
-        p.story.push({type:'paragraph', text:'Summarize the pattern in a sentence.', id:id()})
+        p.story.push({type:'paragraph', text:(s.disc[0]||'Mumble.').replace(/Discussion: /,'').substring(0,100), id:id()})
         p.story.push({type:'paragraph', text:s.prob[0], id:id()})
         p.story.push({type:'paragraph', text:'Therefore:', id:id()})
         p.story.push({type:'paragraph', text:s.soln[0], id:id()})
         p.story.push({type:'paragraph', text:'When '+titlecase(s.when[0]||''), id:id()})
         p.story.push({type:'paragraph', text:'Then '+titlecase(s.then[0]||''), id:id()})
         p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
+        break
       default:
         console.log('skip',k)
     }
