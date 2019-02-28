@@ -26,7 +26,8 @@ function parse () {
     switch (c.split(' ')[0]) {
       case 'Titles_Section-title':
         console.log('section',n++, p.innerText)
-        r[p.innerText] = s = {type:'section'}
+        r[p.innerText] = s = {type:'section', patn:[]}
+        each(p.nextSibling.nextSibling, 'li', i => s.patn.push(i.innerText))
         break
       case 'Titles_Chapter-title':
         console.log('chapter',n++, p.innerText)
@@ -37,7 +38,7 @@ function parse () {
         s.when.push(resolve(p))
         break
       case 'Body_Therefore':
-        console.log(p.innerText)
+        // console.log(p.innerText)
         t = s.soln
         break
       case 'Body_-----':
@@ -53,7 +54,7 @@ function parse () {
         break
       case 'Body_body-text':
         if (t==s.then) {
-          console.log(p)
+          // console.log(p)
           t.push(resolve(p))
         } else {
           t.push(p.innerText)
@@ -62,7 +63,9 @@ function parse () {
       default:
         // console.log('   ', c)
     }
-    console.log('      ', c,p.innerText.substring(0,30))
+    if (c != 'TOC_TOC-1' && c != 'TOC_TOC-2' && s.type == 'section') {
+      console.log('      ', c,p.innerText.substring(0,30))
+    }
   }
 
   function resolve (p) {
@@ -87,8 +90,10 @@ function each (element, tag, fun) {
 }
 
 function typecheck(r) {
-  let csv = ['type,chapter,checks']
+  let csv = ['type,chapter,slug,checks']
+  let valid = Object.keys(r).map(k=>slug(k))
   for (k in r) {
+    if (k == 'CASE STUDIES') break
     let s = r[k]
     let e = []
     if(s.type=='chapter') {
@@ -97,17 +102,18 @@ function typecheck(r) {
       if (s.when.length != 1) e.push('when-len-'+s.when.length);
       if (s.then.length != 1) e.push('then-len-'+s.then.length);
       if (s.disc.length == 0) e.push('disc-len-'+s.disc.length);
+      s.links.map(l=>{if (!(valid.includes(l)||valid.includes(l.replace(/s$/,'')))) {e.push('link-'+l)}})
     }
-    csv.push([s.type, k.replace(/,/,' '), e.join(' ')].join(','))
+    csv.push([s.type, k.replace(/,/,' '), slug(k), e.join(' ')].join(','))
   }
-  // download(csv.join("\n"), 'checks.csv', 'text/plain')
+  download(csv.join("\n"), 'checks.csv', 'text/plain')
 }
 
 function generate(r) {
   let e = {}
   for (k in r) {
-    let s = r[k]
     if (k == 'CASE STUDIES') break
+    let s = r[k]
     console.log('generate',s.type,k)
     switch (s.type) {
       case 'chapter':
