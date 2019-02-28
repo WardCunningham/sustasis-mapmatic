@@ -31,7 +31,10 @@ function parse () {
         break
       case 'Titles_Chapter-title':
         console.log('chapter',n++, p.innerText)
-        r[p.innerText.replace(/\n/,' ')] = s = {type:'chapter', prob:[], soln:[], disc:[], when:[], then:[], links:[]}
+        r[p.innerText.replace(/\n/,' ')] = s = {type:'chapter', prob:[], soln:[], disc:[], when:[], then:[], links:[], img:[]}
+        each(p.nextSibling.nextSibling,'img', i => {
+          s.img.push(i.getAttribute('src').split('/').reverse()[0])
+        })
         t = s.prob
         break
       case 'Body_upward-tekst':
@@ -106,10 +109,13 @@ function typecheck(r) {
     }
     csv.push([s.type, k.replace(/,/,' '), slug(k), e.join(' ')].join(','))
   }
-  download(csv.join("\n"), 'checks.csv', 'text/plain')
+  // download(csv.join("\n"), 'checks.csv', 'text/plain')
 }
 
 function generate(r) {
+  let caps = {}
+  for (k in r) caps[titlecase(k)] = k
+
   let e = {}
   for (k in r) {
     if (k == 'CASE STUDIES') break
@@ -117,7 +123,7 @@ function generate(r) {
     console.log('generate',s.type,k)
     switch (s.type) {
       case 'chapter':
-        let p = {title: titlecase(k), story:[]}
+        var p = {title: titlecase(k), story:[]}
         e[slug(k)] = p
         p.story.push({type:'paragraph', text:(s.disc[0]||'Mumble.').replace(/Discussion: /,'').substring(0,100), id:id()})
         p.story.push({type:'paragraph', text:s.prob[0], id:id()})
@@ -127,11 +133,25 @@ function generate(r) {
         p.story.push({type:'paragraph', text:'Then '+titlecase(s.then[0]||''), id:id()})
         p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
         break
+      case 'section':
+        var p = {title: titlecase(k), story:[]}
+        e[slug(k)] = p
+        p.story.push({type:'paragraph', text:'What force unites these patterns?', id:id()})
+        p.story.push({type:'markdown', text:(s.patn.map(x=>`- [[${x}]]`).join("\n")), id:id()})
+        p.story.push({type:'html', text:(s.patn.map(x=>gallery(x)).join("\n\n")), id:id()})
+        p.story.push({type:'paragraph', text:'Use [[Pattern Diagrams]] to generate this diagram.', id:id()})
+        p.story.push({type:'graphviz', text:"digraph {\nrankdir=LR\nnode [shape=box style=filled fillcolor=lightgray]\n  \"pre-Pattern\" -> Pattern\n  Pattern -> \"post-Pattern-one\"\n  Pattern -> \"post-Pattern-two\"\n}", id:id()})
+        break
       default:
         console.log('skip',k)
     }
   }
   return e
+
+  function gallery(title) {
+    let image = caps[title] ? r[caps[title]].img[0] : 'missing.jpg'
+    return `<img width=49% src=http:/assets/patterns/${image}>`
+  }
 }
 
 function slug (title) {

@@ -18,7 +18,7 @@
  
 
       async function candidates () {
-        sitemap = await get('http://growing.ward.bay.wiki.org/system/sitemap.json')
+        sitemap = await get('http://growing.bay.wiki.org/system/sitemap.json')
         sitemap.map (each => sites[each.slug] = each)
         roots.innerHTML = sitemap
           .filter(each => each.title.match(/ Patterns$/))
@@ -29,14 +29,14 @@
       async function diagram (slug) {
         markup.innerText = 'working'
         var dot = ['node [shape=box style=filled fillcolor=lightgray]','rankdir=LR']
-        var page = await get(`http://growing.ward.bay.wiki.org/${slug}.json`)
+        var page = await get(`http://growing.bay.wiki.org/${slug}.json`)
         const links = /\[\[(.+?)\]\]/g
         while(more = links.exec(page.story[1].text)) {
           let title = more[1]
           console.log('title',title)
           dot.push(node(title,'bisque'))
           if(sites[asSlug(title)]) {
-            let page2 = await get(`http://growing.ward.bay.wiki.org/${asSlug(title)}.json`)
+            let page2 = await get(`http://growing.bay.wiki.org/${asSlug(title)}.json`)
             for (var i = 0; i<page2.story.length; i++) {
               let text2 = page2.story[i].text
               const links2 = /\[\[(.+?)\]\]/g
