@@ -1,14 +1,17 @@
+// build wiki site from html of ebook
+// usage: <script src="growing.js"></script>
+
 console.log('starting')
 build()
 
 function build () {
   let r = parse()
-  console.log(r)
-  typecheck(r)
-  e = generate(r)
+  console.log('parse',r)
+  let j = typecheck(r)
+  console.log('typecheck',j)
+  let e = generate(r)
   console.log('export',e)
-  var json = JSON.stringify(e, null, '  ')
-  download(json, 'export.json', 'text/plain')
+  download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
 }
 
 function parse () {
@@ -107,9 +110,7 @@ function parse () {
       default:
         // console.log('   ', c)
     }
-    if (c != 'TOC_TOC-1' && c != 'TOC_TOC-2' && s.type == 'section') {
-      console.log('      ', c,p.innerText.substring(0,30))
-    }
+    // console.log('      ', c,p.innerText.substring(0,30))
   }
 
   function resolve (p) {
@@ -137,6 +138,7 @@ function each (element, tag, fun) {
 
 function typecheck(r) {
   let csv = ['type,chapter,slug,checks']
+  let j = []
   let valid = Object.keys(r).map(k=>slug(k))
   for (k in r) {
     if (k == 'CASE STUDIES') break
@@ -151,7 +153,9 @@ function typecheck(r) {
       s.links.map(l=>{if (!(valid.includes(l)||valid.includes(l.replace(/s$/,'')))) {e.push('link-'+l)}})
     }
     csv.push([s.type, k.replace(/,/,' '), slug(k), e.join(' ')].join(','))
+    j.push([slug(k),...e])
   }
+  return j
   // download(csv.join("\n"), 'checks.csv', 'text/plain')
 }
 
@@ -163,7 +167,7 @@ function generate(r) {
   for (k in r) {
     if (k == 'CASE STUDIES') break
     let s = r[k]
-    console.log('generate',s.type,k)
+    console.log(s.type,k)
     switch (s.type) {
       case 'chapter':
         var p = {title: titlecase(k), story:[]}
@@ -213,7 +217,7 @@ function generate(r) {
     const links = /\[\[(.+?)\]\]/g
     while(more = links.exec(page.story[1].text)) {
       let title = more[1]
-      console.log('title',title)
+      // console.log('title',title)
       dotmore.push(node(title,'bisque'))
       if(e[slug(title)]) {
         let page2 = e[slug(title)]
@@ -222,14 +226,14 @@ function generate(r) {
           const links2 = /\[\[(.+?)\]\]/g
           if (text2.match(/^When /)) {
             while(more2 = links2.exec(text2)) {
-              console.log('when',more2[1])
+              // console.log('when',more2[1])
               dot.push(node(more2[1],'lightblue'))
               dot.push(`${quote(more2[1])} -> ${quote(title)}`)
             }
           }
           if (text2.match(/^Then /)) {
             while(more2 = links2.exec(text2)) {
-              console.log('then',more2[1])
+              // console.log('then',more2[1])
               dot.push(node(more2[1],'lightblue'))
               dot.push(`${quote(title)} -> ${quote(more2[1])}`)
             }
