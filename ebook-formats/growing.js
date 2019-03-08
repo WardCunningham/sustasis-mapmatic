@@ -165,7 +165,7 @@ function generate(r) {
 
 var section_graph =
 `DOT strict digraph
-  node [shape=box style=filled fillcolor=bisque penwidth=4 color=blue]
+  node [shape=box style=filled fillcolor=bisque penwidth=3 color=brown]
   HERE NODE
     WHERE /^- /
       node [fillcolor=palegreen]
@@ -179,6 +179,9 @@ var section_graph =
                 WHERE /^See more/
                   node [fillcolor=bisque]
                   LINKS NODE -> HERE
+              ELSE
+                node [fillcolor=lightgray]
+                FAKE NODE -> HERE
           WHERE /^Then/
             node [fillcolor=palegreen]
             LINKS HERE -> NODE
@@ -186,7 +189,10 @@ var section_graph =
                 node [fillcolor=bisque]
                 WHERE /^See more/
                   node [fillcolor=bisque]
-                  LINKS NODE -> HERE`
+                  LINKS NODE -> HERE
+              ELSE
+                node [fillcolor=lightgray]
+                FAKE HERE -> NODE`
 
   let e = {}
   let section = null
