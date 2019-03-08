@@ -163,7 +163,33 @@ function generate(r) {
   let caps = {}
   for (k in r) caps[titlecase(k)] = k
 
+var section_graph =
+`DOT strict digraph
+  node [shape=box style=filled fillcolor=bisque penwidth=4 color=blue]
+  HERE NODE
+    WHERE /^- /
+      node [fillcolor=palegreen]
+      LINKS HERE -> NODE
+        node [fillcolor=palegreen penwidth=1 color=black]
+        HERE NODE
+          WHERE /^When/
+            LINKS NODE -> HERE
+              HERE NODE
+                node [fillcolor=bisque]
+                WHERE /^See more/
+                  node [fillcolor=bisque]
+                  LINKS NODE -> HERE
+          WHERE /^Then/
+            node [fillcolor=palegreen]
+            LINKS HERE -> NODE
+              HERE NODE
+                node [fillcolor=bisque]
+                WHERE /^See more/
+                  node [fillcolor=bisque]
+                  LINKS NODE -> HERE`
+
   let e = {}
+  let section = null
   for (k in r) {
     if (k == 'CASE STUDIES') break
     let s = r[k]
@@ -178,27 +204,21 @@ function generate(r) {
         p.story.push({type:'paragraph', text:s.soln[0], id:id()})
         p.story.push({type:'paragraph', text:'When '+titlecase(s.when[0]||''), id:id()})
         p.story.push({type:'paragraph', text:'Then '+titlecase(s.then[0]||''), id:id()})
+        p.story.push({type:'paragraph', text:`See more [[${section}]]`, id:id()})
         p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
         break
       case 'section':
+        section = titlecase(k)
         var p = {title: titlecase(k), story:[]}
         e[slug(k)] = p
         p.story.push({type:'paragraph', text:'What force unites these patterns?', id:id()})
-        p.story.push({type:'markdown', text:(s.patn.map(x=>`- [[${x}]]`).join("\n")), id:id()})
         p.story.push({type:'html', text:(s.patn.map(x=>gallery(x)).join("\n\n")), id:id()})
-        p.story.push({type:'paragraph', text:'Use [[Pattern Diagrams]] to generate this diagram.', id:id()})
-        p.story.push({type:'graphviz', text:"digraph {}", id:id()})
+        p.story.push({type:'graphviz', text:section_graph, id:id()})
+        p.story.push({type:'markdown', text:(s.patn.map(x=>`- [[${x}]]`).join("\n")), id:id()})
         p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
         break
       default:
         console.log('skip',k)
-    }
-  }
-  for (slg in e) {
-    if (e[slg].story[4].type == 'graphviz') {
-      console.log('diagram', slg)
-      e[slg].story[4].text = diagram(slg)
-      e[slg]['journal'][0].item = deepCopy(e[slg])
     }
   }
   return e
