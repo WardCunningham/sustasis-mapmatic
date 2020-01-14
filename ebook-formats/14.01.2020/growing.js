@@ -10,9 +10,9 @@ function build () {
   console.log('parse',r)
   // let j = typecheck(r)
   // console.log('typecheck',j)
-  // let e = generate(r)
-  // console.log('export',e)
-  // download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
+  let e = generate(r)
+  console.log('export',e)
+  download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
 }
 
 function parse () {
@@ -75,19 +75,19 @@ function parse () {
         // console.log(c, p.innerText)
         section.description = p.innerText
         break
-      // case 'Section-styles_Section-list':
-        console.log(c, p.innerText)
+      case 'Section-styles_Section-list':
+        // console.log(c, p.innerText)
         section.list.push(p.innerText)
         break
       case 'Pattern-styles_PATTERN-TITLE':
-        console.log(c, p.innerText)
+        // console.log(c, p.innerText)
         section.body.push(pattern = {pattern:p.innerText})
         pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
       case 'Pattern-styles_-----':
         break
       default:
-        console.log('   ', c)
+        // console.log('   ', c)
     }
     // console.log('      ', c,p.innerText.substring(0,30))
   }
@@ -139,50 +139,52 @@ function typecheck(r) {
 }
 
 function generate(r) {
-  let caps = {}
-  for (k in r) caps[titlecase(k)] = k
-
-  var section_graph =
-  `DOT FROM pattern-section-diagram`
-
-  let e = {}
-  let section = null
-  for (k in r) {
-    if (k == 'CASE STUDIES') break
-    let s = r[k]
-    console.log(s.type,k)
-    switch (s.type) {
-      case 'chapter':
-        var p = {title: titlecase(k), story:[]}
-        e[slug(k)] = p
-        p.story.push({type:'paragraph', text:(s.disc[0]||'Mumble.').replace(/Discussion: /,'').substring(0,100), id:id()})
-        p.story.push(image(titlecase(k)))
-        p.story.push({type:'paragraph', text:s.prob[0], id:id()})
-        p.story.push({type:'paragraph', text:'Therefore:', id:id()})
-        p.story.push({type:'paragraph', text:s.soln[0], id:id()})
-        p.story.push({type:'paragraph', text:'When '+titlecase(s.when[0]||''), id:id()})
-        p.story.push({type:'paragraph', text:'Then '+titlecase(s.then[0]||''), id:id()})
-        p.story.push({type:'paragraph', text:`See more [[${section}]]`, id:id()})
-        p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
-        break
-      case 'section':
-        section = titlecase(k)
-        var p = {title: titlecase(k), story:[]}
-        e[slug(k)] = p
-        p.story.push({type:'paragraph', text:'What force unites these patterns?', id:id()})
-        p.story.push(image(titlecase(s.patn[1])))
-        p.story.push(image(titlecase(s.patn[0])))
-        p.story.push(image(titlecase(s.patn[3])))
-        p.story.push(image(titlecase(s.patn[2])))
-        p.story.push({type:'paragraph', text:' ', id:id()})
-        p.story.push({type:'graphviz', text:section_graph, id:id()})
-        p.story.push({type:'markdown', text:(s.patn.map(x=>`- [[${x}]]`).join("\n")), id:id()})
-        p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
-        break
-      default:
-        console.log('skip',k)
-    }
+  let e = []
+  e.push({
+    title: 'The Whole Story',
+    story: r.map(x => ({type:'paragraph',text:`[[${x.meta}]]`}))
+  })
+  for (let meta of r) {
+    let p = {title: meta.meta, story: [], assets: []}
+    e.push(p)
   }
+  // let section = null
+  // for (k in r) {
+  //   if (k == 'CASE STUDIES') break
+  //   let s = r[k]
+  //   console.log(s.type,k)
+  //   switch (s.type) {
+  //     case 'chapter':
+  //       var p = {title: titlecase(k), story:[]}
+  //       e[slug(k)] = p
+  //       p.story.push({type:'paragraph', text:(s.disc[0]||'Mumble.').replace(/Discussion: /,'').substring(0,100), id:id()})
+  //       p.story.push(image(titlecase(k)))
+  //       p.story.push({type:'paragraph', text:s.prob[0], id:id()})
+  //       p.story.push({type:'paragraph', text:'Therefore:', id:id()})
+  //       p.story.push({type:'paragraph', text:s.soln[0], id:id()})
+  //       p.story.push({type:'paragraph', text:'When '+titlecase(s.when[0]||''), id:id()})
+  //       p.story.push({type:'paragraph', text:'Then '+titlecase(s.then[0]||''), id:id()})
+  //       p.story.push({type:'paragraph', text:`See more [[${section}]]`, id:id()})
+  //       p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
+  //       break
+  //     case 'section':
+  //       section = titlecase(k)
+  //       var p = {title: titlecase(k), story:[]}
+  //       e[slug(k)] = p
+  //       p.story.push({type:'paragraph', text:'What force unites these patterns?', id:id()})
+  //       p.story.push(image(titlecase(s.patn[1])))
+  //       p.story.push(image(titlecase(s.patn[0])))
+  //       p.story.push(image(titlecase(s.patn[3])))
+  //       p.story.push(image(titlecase(s.patn[2])))
+  //       p.story.push({type:'paragraph', text:' ', id:id()})
+  //       p.story.push({type:'graphviz', text:section_graph, id:id()})
+  //       p.story.push({type:'markdown', text:(s.patn.map(x=>`- [[${x}]]`).join("\n")), id:id()})
+  //       p['journal']=[{type: 'create', item:deepCopy(p), date:Date.now()}]
+  //       break
+  //     default:
+  //       console.log('skip',k)
+  //   }
+  // }
   return e
 
   function image(title) {
