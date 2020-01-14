@@ -5,61 +5,32 @@ console.log('starting')
 build()
 
 function build () {
+  // debugger
   let r = parse()
   console.log('parse',r)
-  let j = typecheck(r)
-  console.log('typecheck',j)
-  let e = generate(r)
-  console.log('export',e)
-  download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
+  // let j = typecheck(r)
+  // console.log('typecheck',j)
+  // let e = generate(r)
+  // console.log('export',e)
+  // download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
 }
 
 function parse () {
-  fix = {
-    "400M Main Street Network": "400M Through Street Network",
-    "Mobility Corridors": "Mobility Corridor",
-    "Multi-Way Boulevards": "Multi-Way Boulevard",
-    "Greenway": "Greenway Corridor",
-    "Sanctuaries": "Sanctuary",
-    "Shared Space Streets": "Shared Space Lane",
-    "Ornament": "Ornamental Construction",
-    "Perimeter Buildings": "Perimeter Building",
-    "Place Networks": "Place Network",
-    "Blue-Green Networks": "Blue-Green Network",
-    "Avenues": "Avenue",
-    "Shared Space Lanes": "Shared Space Lane",
-    "Neighborhood Squares": "Neighborhood Square",
-    "Neighborhood Parks": "Neighborhood Park",
-    "Greenway Corridors": "Greenway Corridor",
-    "Streets as Centers": "Street as Center",
-    "Streets As Centers": "Street as Center",
-    "Walkable Streetscapes": "Walkable Streetscape",
-    "Walkable Streets": "Walkable Streetscape",
-    "Indoor-Outdoor Complexity": "Indoor-Outdoor Ambiguity",
-    "Courtyard Buildings": "Courtyard Building",
-    "Small Blocks": "Small Block",
-    "Small Plots": "Small Plot",
-    "Row Buildings": "Row Building",
-    "Arcade Building": "Gallery Building",
-    "Circulation Networks": "Circulation Network",
-    "Human-Scale Design": "Human-Scale Detail",
-    "Human-Scaled Details": "Human-Scale Detail",
-    "Community Mockups": "Community Mockup",
-    "Tax Increment Financing": "Tax-Increment Finance",
-    "Tax-Increment Financing": "Tax-Increment Finance",
-    "Slum Upgrading": "Slum Upgrade",
-    "Slum Upgrades": "Slum Upgrade",
-    "Neighborhood Planning Centers": "Neighborhood Planning Center",
-    "Augmented Reality Design": "Design with Augmented Reality",
-    "Transportation Network Company": "Responsive T.N.C.",
-    "Evolving Plots": "Mid-Block Alley",
-    "Perimeter Blocks": "Perimeter Block"
-  }
-  let r = {}
-  let s = {type:'preface', body:[]}
-  let t = s.body
-  r['PREFACE']=s
-  let n = 0
+  // [
+  //   {meta, body: [
+  //     {section, body: [
+  //       {pattern, problem, solution}
+
+  let r = []
+  let meta, section, pattern
+
+  let p_classes = {}
+  each(document, 'p', (p) => {
+    let c = (p.getAttribute('class')||'null').split(' ')[0]
+    p_classes[c] = (p_classes[c] || 0) + 1
+  })
+  console.log(p_classes)
+
   each(document, 'p', paragraph)
   return r
 
@@ -67,48 +38,56 @@ function parse () {
     let c = p.getAttribute('class')||'null'
     const capfix = (cap) => allcaps(fix[titlecase(cap)]||cap)
 
+// SECTION STYLES:
+// Metasection – begins on new page, in capital letters, bigger size than Section title (x3 times)
+// Section – begins on new page, covers 4 patterns every time, in capital letters (x20 times)
+// Section description – in Italic
+// Section list – bulleted list of the 4 patterns
+
+// PATTERN STYLES:
+// Pattern title – regular, capital letters
+// Upward text – regular, based on Normal text
+// * * * – separation element
+// Problem statement – bold version of the Normal text
+// Normal – regular body text of the Discussion section
+// Normal Italic (quote) – italic, text of the discussion (x2 times only)
+// Therefore – regular, indent 4 mm, only applies to the word “Therefore”
+// Solution – bold (same as problem statement)
+// Downward text – regular, the same as upward text
+// Footnote – regular, smaller size text at the end of the paragraph
+// (NB: there is also one Character style, called Footnote number that marks the footnote number in the Discussion)
+// Footnote line – line above footnotes at the end of the paragraph
+
+// IMAGES:
+// Image captions – in italic, under images in Discussion section
+// Big photo – at the beginning of each pattern, centers the image and adds space between the pattern title.
+
     switch (c.split(' ')[0]) {
-      case 'Titles_Section-title':
-        console.log('section',n++, p.innerText)
-        r[p.innerText] = s = {type:'section', patn:[]}
-        each(p.nextSibling.nextSibling, 'li', i => s.patn.push(capfix(i.innerText)))
+      case 'Section-styles_META-SECTION':
+        // console.log(c, p.innerText)
+        r.push(meta = {meta:p.innerText,body:[]})
         break
-      case 'Titles_Chapter-title':
-        console.log('chapter',n++, p.innerText)
-        r[p.innerText.replace(/\n/,' ')] = s = {type:'chapter', prob:[], soln:[], disc:[], when:[], then:[], links:[], img:[]}
-        each(p.nextSibling.nextSibling,'img', i => {
-          s.img.push(i.getAttribute('src').split('/').reverse()[0])
-        })
-        t = s.prob
+      case 'Section-styles_SECTION':
+        // console.log(c, p.innerText)
+        meta.body.push(section = {section:p.innerText,list:[],body:[]})
         break
-      case 'Body_upward-tekst':
-        s.when.push(resolve(p))
+      case 'Section-styles_Section-description':
+        // console.log(c, p.innerText)
+        section.description = p.innerText
         break
-      case 'Body_Therefore':
-        // console.log(p.innerText)
-        t = s.soln
+      // case 'Section-styles_Section-list':
+        console.log(c, p.innerText)
+        section.list.push(p.innerText)
         break
-      case 'Body_-----':
-        if (t===s.soln) {
-          t = s.then
-        }
+      case 'Pattern-styles_PATTERN-TITLE':
+        console.log(c, p.innerText)
+        section.body.push(pattern = {pattern:p.innerText})
+        pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
-      case 'Body_Solution':
-        t.push(p.innerText.replace(/Problem-statement: /,''))
-        if(t==s.prob){
-          t=s.disc
-        }
-        break
-      case 'Body_body-text':
-        if (t==s.then) {
-          // console.log(p)
-          t.push(resolve(p))
-        } else {
-          t.push(p.innerText)
-        }
+      case 'Pattern-styles_-----':
         break
       default:
-        // console.log('   ', c)
+        console.log('   ', c)
     }
     // console.log('      ', c,p.innerText.substring(0,30))
   }
