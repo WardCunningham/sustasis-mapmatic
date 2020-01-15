@@ -29,7 +29,7 @@ function parse () {
     let c = (p.getAttribute('class')||'null').split(' ')[0]
     p_classes[c] = (p_classes[c] || 0) + 1
   })
-  console.log(p_classes)
+  console.log('classes', p_classes)
 
   each(document, 'p', paragraph)
   return r
@@ -38,38 +38,18 @@ function parse () {
     let c = p.getAttribute('class')||'null'
     const capfix = (cap) => allcaps(fix[titlecase(cap)]||cap)
 
-// SECTION STYLES:
-// Metasection – begins on new page, in capital letters, bigger size than Section title (x3 times)
-// Section – begins on new page, covers 4 patterns every time, in capital letters (x20 times)
-// Section description – in Italic
-// Section list – bulleted list of the 4 patterns
-
-// PATTERN STYLES:
-// Pattern title – regular, capital letters
-// Upward text – regular, based on Normal text
-// * * * – separation element
-// Problem statement – bold version of the Normal text
-// Normal – regular body text of the Discussion section
-// Normal Italic (quote) – italic, text of the discussion (x2 times only)
-// Therefore – regular, indent 4 mm, only applies to the word “Therefore”
-// Solution – bold (same as problem statement)
-// Downward text – regular, the same as upward text
-// Footnote – regular, smaller size text at the end of the paragraph
-// (NB: there is also one Character style, called Footnote number that marks the footnote number in the Discussion)
-// Footnote line – line above footnotes at the end of the paragraph
-
-// IMAGES:
-// Image captions – in italic, under images in Discussion section
-// Big photo – at the beginning of each pattern, centers the image and adds space between the pattern title.
+    var m
 
     switch (c.split(' ')[0]) {
       case 'Section-styles_META-SECTION':
         // console.log(c, p.innerText)
-        r.push(meta = {meta:p.innerText,body:[]})
+        m = p.innerText.split(/\n/)
+        r.push(meta = {meta:titlecase(m[1]),index:m[0],body:[]})
         break
       case 'Section-styles_SECTION':
         // console.log(c, p.innerText)
-        meta.body.push(section = {section:p.innerText,list:[],body:[]})
+        m = p.innerText.split(/\. /)
+        meta.body.push(section = {section:titlecase(m[1]),index:m[0],list:[],body:[]})
         break
       case 'Section-styles_Section-description':
         // console.log(c, p.innerText)
@@ -77,11 +57,13 @@ function parse () {
         break
       case 'Section-styles_Section-list':
         // console.log(c, p.innerText)
-        section.list.push(p.innerText)
+        m = p.innerText.split(/\. /)
+        section.list.push({pattern:m[1],index:m[0]})
         break
       case 'Pattern-styles_PATTERN-TITLE':
         // console.log(c, p.innerText)
-        section.body.push(pattern = {pattern:p.innerText})
+        m = p.innerText.split(/\. /)
+        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0]})
         pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
       case 'Pattern-styles_-----':
@@ -138,15 +120,59 @@ function typecheck(r) {
   // download(csv.join("\n"), 'checks.csv', 'text/plain')
 }
 
+function table(pats) {
+  let tab = ['<table cellpadding=6>']
+  for (let i = 0; i<pats.length; i++) {
+    let pat = pats[i]
+    if (i%2 == 0) {
+      tab.push('<tr>')
+    }
+    tab.push(`<td><center><img width="200px" height="255px" src="http:/assets/image/${pat.image}"><br>`)
+    tab.push(`[[${pat.pattern}]]</center>`)
+  }
+  return tab.join("\n")
+}
+
 function generate(r) {
   let e = []
+
   e.push({
     title: 'The Whole Story',
-    story: r.map(x => ({type:'paragraph',text:`[[${x.meta}]]`}))
+    story: r.map(x => {
+      let count = x.body.reduce((s,e) => s + e.list.length, 0)
+      return {type:'markdown',text:`[[${x.meta}]]\n${count} patterns…`}
+    })
   })
+
+  // Patterns of xyz
   for (let meta of r) {
-    let p = {title: meta.meta, story: [], assets: []}
+    let story = meta.body.map(s =>
+      ({type:'markdown',text:`[[${s.section}]]\n${s.description}`}))
+    let p = {title: meta.meta, story, assets: []}
     e.push(p)
+  }
+
+  // xyz Patterns
+  for (let meta of r) {
+    for (let section of meta.body) {
+      let story = []
+      // section.body.map(p =>
+      //   ({type:'html',text:`<img width="40%" src="http:/assets/image/${p.image}"><br>[[${p.pattern}]]`}))
+      story.push({type:'paragraph',text:section.description})
+      story.push({type:'html',text:table(section.body)})
+      // story.push({type:'code', text:JSON.stringify(section,null,2)})
+      e.push({title:section.section, story, assets:[]})
+    }
+  }
+
+  // xyz Pattern
+  for (let meta of r) {
+    for (let section of meta.body) {
+      for (let pattern of section.body) {
+        let story = [{type:'code', text:JSON.stringify(pattern,null,2)}]
+        e.push({title:pattern.pattern, story, assets:[]})
+      }
+    }
   }
   // let section = null
   // for (k in r) {
