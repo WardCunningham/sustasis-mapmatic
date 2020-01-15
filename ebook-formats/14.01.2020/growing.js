@@ -61,15 +61,35 @@ function parse () {
         section.list.push({pattern:m[1],index:m[0]})
         break
       case 'Pattern-styles_PATTERN-TITLE':
-        // console.log(c, p.innerText)
+        console.log(c, p.innerText)
         m = p.innerText.split(/\. /)
-        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0]})
+        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0],discuss:[],notes:[]})
         pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
+      case 'Pattern-styles_Upward-text':
+        pattern.upward = p.innerText
+        break
+      case 'Pattern-styles_Problem-statement':
+        pattern.problem = p.innerText
+        break
+      case 'Pattern-styles_Normal':
+        pattern.discuss.push(p.innerText)
+        break
+      case 'Pattern-styles_Solution':
+        pattern.solution = p.innerText
+        break
+      case 'Pattern-styles_Downward-text':
+        pattern.downward = p.innerText
+        break
+      case 'Pattern-styles_footnote':
+        pattern.notes.push(p.innerText)
+        break
       case 'Pattern-styles_-----':
+      case 'Pattern-styles_Therefore':
+      case 'Pattern-styles_footnote-line':
         break
       default:
-        // console.log('   ', c)
+        console.log('   ', c)
     }
     // console.log('      ', c,p.innerText.substring(0,30))
   }
@@ -137,7 +157,7 @@ function generate(r) {
   let e = []
 
   e.push({
-    title: 'The Whole Story',
+    title: 'Growing Regions',
     story: r.map(x => {
       let count = x.body.reduce((s,e) => s + e.list.length, 0)
       return {type:'markdown',text:`[[${x.meta}]]\n${count} patterns…`}
@@ -160,7 +180,7 @@ function generate(r) {
       //   ({type:'html',text:`<img width="40%" src="http:/assets/image/${p.image}"><br>[[${p.pattern}]]`}))
       story.push({type:'paragraph',text:section.description})
       story.push({type:'html',text:table(section.body)})
-      // story.push({type:'code', text:JSON.stringify(section,null,2)})
+      // story.push({type:'code', text:JSON.stringify(section,null,2)}
       e.push({title:section.section, story, assets:[]})
     }
   }
@@ -169,7 +189,20 @@ function generate(r) {
   for (let meta of r) {
     for (let section of meta.body) {
       for (let pattern of section.body) {
-        let story = [{type:'code', text:JSON.stringify(pattern,null,2)}]
+        let story = []
+        story.push({type:'paragraph', text:pattern.upward})
+        story.push({type:'html', text:`<center><img width=80% src="http:/assets/image/${pattern.image}">`})
+        story.push({type:'markdown', text:`__${pattern.problem}__`})
+        for (discussion of pattern.discuss) {
+          story.push({type: 'paragraph', text:discussion})
+        }
+        story.push({type:'markdown', text:`__Therefor: ${pattern.solution}__`})
+        // story.push({type:'code', text:JSON.stringify(pattern,null,2)})
+        story.push({type:'paragraph', text:pattern.downward})
+        story.push({type:'pagefold',text:'notes'})
+        for (footnote of pattern.notes) {
+          story.push({type: 'paragraph', text:footnote})
+        }
         e.push({title:pattern.pattern, story, assets:[]})
       }
     }

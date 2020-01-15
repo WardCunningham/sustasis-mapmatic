@@ -72,3 +72,5 @@ Generate a list of mostly complete pages. Use many passes, going deeper each pas
     {title, story} ...
 ```
 Capture the export.json, expand it into complete pages adding slug of title, random ids on story items, and a journal with one create action.
+
+Copy images to the site's assets/image directory.
