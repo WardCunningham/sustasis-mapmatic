@@ -3,14 +3,14 @@ Request version in ebook/html format with only patterns present.
 
 Download from dropbox into new subdiretory.
 
-  14.01.2020
+  `14.01.2020`
 
 Clone extractor growing.js and add script tag at end of html.
 
-  <script src="growing.js"></script>
+  `<script src="growing.js"></script>`
 
 Confirm paragraph types are as expected.
-
+```
   Section-styles_META-SECTION: 3
   Section-styles_SECTION: 20
   Section-styles_Section-description: 20
@@ -27,9 +27,10 @@ Confirm paragraph types are as expected.
   Pattern-styles_footnote: 136
   Images_Image-captions: 56
   Pattern-styles_Normal-Italic--quote-: 2
-
+```
 Expected use of each style.
 
+```
   SECTION STYLES:
 
   Metasection – begins on new page, in capital letters
@@ -56,18 +57,18 @@ Expected use of each style.
 
   Image captions – in italic, under images in Discussion section
   Big photo – at the beginning of each pattern, centers the image and adds space between the pattern title.
-
+```
 Parse p elements dispatching on class. Debug one switch at a time. Build a heirarcy of nested elements.
-
+```
   [
     {meta, body: [
       {section, body: [
         {pattern, problem, solution} ...
-
+```
 Generate a list of mostly complete pages. Use many passes, going deeper each pass. Export this as export.json.
-
+```
   [
     {title, story}
     {title, story} ...
-
+```
 Capture the export.json, expand it into complete pages adding slug of title, random ids on story items, and a journal with one create action.
