@@ -23,6 +23,17 @@ function parse () {
 
   let r = []
   let meta, section, pattern
+  let spanchecks = []
+
+  fix = {
+    "Form-Based Codes": "Form-Based Code",
+     // from Walkable Multi-Mobility, Hospital
+    "Sanctuary": "Pedestrian Sanctuary",
+     // from Smart Av System
+    "Responsive Transportation Network Companies": "Responsive Transportation Network Company"
+  }
+
+  // elipsis: . . . ⇒ …  (x45)
 
   let p_classes = {}
   each(document, 'p', (p) => {
@@ -32,6 +43,8 @@ function parse () {
   console.log('classes', p_classes)
 
   each(document, 'p', paragraph)
+  console.log('spanchecks',spanchecks)
+  console.log('markdown',Object.keys(spanchecks).map(k=>`[[${k}]]\n${spanchecks[k].join("\n")}`).join("\n\n"))
   return r
 
   function paragraph (p) {
@@ -63,23 +76,23 @@ function parse () {
       case 'Pattern-styles_PATTERN-TITLE':
         console.log(c, p.innerText)
         m = p.innerText.split(/\. /)
-        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0],discuss:[],notes:[]})
+        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0],discuss:[],notes:[],links:[]})
         pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
       case 'Pattern-styles_Upward-text':
-        pattern.upward = p.innerText
+        pattern.upward = resolve(p)
         break
       case 'Pattern-styles_Problem-statement':
         pattern.problem = p.innerText
         break
       case 'Pattern-styles_Normal':
-        pattern.discuss.push(p.innerText)
+        pattern.discuss.push(resolve(p))
         break
       case 'Pattern-styles_Solution':
-        pattern.solution = p.innerText
+        pattern.solution = resolve(p)
         break
       case 'Pattern-styles_Downward-text':
-        pattern.downward = p.innerText
+        pattern.downward = resolve(p)
         break
       case 'Pattern-styles_footnote':
         pattern.notes.push(p.innerText)
@@ -103,12 +116,25 @@ function parse () {
         link = fix[link]||link
         let plink = `[[${link}]]`
         result = result.replace(m[0],plink)
-        s.links.push(slug(link))
+        // pattern.links.push(slug(link))
       }
     })
+    spancheck(result)
     return result
   }
+
+
+  function spancheck (text) {
+    const link = /[A-Z]{3,}[A-Z -]{5,}[A-Z]( *\(.*?\))?/
+    if (m = text.match(link)) {
+      let p = pattern.pattern
+      spanchecks[p] = spanchecks[p] || []
+      spanchecks[p].push(m[0])
+    }
+  }
+
 }
+
 
 function each (element, tag, fun) {
   let elements = element.getElementsByTagName(tag)
@@ -156,18 +182,17 @@ function table(pats) {
 function generate(r) {
   let e = []
 
-  e.push({
-    title: 'Growing Regions',
-    story: r.map(x => {
-      let count = x.body.reduce((s,e) => s + e.list.length, 0)
-      return {type:'markdown',text:`[[${x.meta}]]\n${count} patterns…`}
-    })
-  })
+  let story = r.map(x => {
+    let count = x.body.reduce((s,e) => s + e.list.length, 0)
+    return {type:'markdown',text:`[[${x.meta}]]\n${count} patterns…`}})
+  story.push({type:'graphviz', text:'DOT FROM two-level-diagram'})
+  e.push({title: 'Growing Regions', story})
 
   // Patterns of xyz
   for (let meta of r) {
     let story = meta.body.map(s =>
       ({type:'markdown',text:`[[${s.section}]]\n${s.description}`}))
+    story.push({type:'graphviz', text:'DOT FROM two-level-diagram'})
     let p = {title: meta.meta, story, assets: []}
     e.push(p)
   }
@@ -180,6 +205,7 @@ function generate(r) {
       //   ({type:'html',text:`<img width="40%" src="http:/assets/image/${p.image}"><br>[[${p.pattern}]]`}))
       story.push({type:'paragraph',text:section.description})
       story.push({type:'html',text:table(section.body)})
+      story.push({type:'graphviz', text:'DOT FROM pattern-cluster-diagram'})
       // story.push({type:'code', text:JSON.stringify(section,null,2)}
       e.push({title:section.section, story, assets:[]})
     }
@@ -196,7 +222,7 @@ function generate(r) {
         for (discussion of pattern.discuss) {
           story.push({type: 'paragraph', text:discussion})
         }
-        story.push({type:'markdown', text:`__Therefor: ${pattern.solution}__`})
+        story.push({type:'markdown', text:`__Therefore: ${pattern.solution}__`})
         // story.push({type:'code', text:JSON.stringify(pattern,null,2)})
         story.push({type:'paragraph', text:pattern.downward})
         story.push({type:'pagefold',text:'notes'})
