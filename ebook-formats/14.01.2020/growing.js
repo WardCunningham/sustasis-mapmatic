@@ -22,6 +22,7 @@ function parse () {
   let r = []
   let meta, section, pattern
   let spanchecks = []
+  let embeddedimages = []
 
   fix = {
     "Form-Based Codes": "Form-Based Code",
@@ -46,8 +47,9 @@ function parse () {
   // console.log('titles',Object.keys(titles))
 
   each(document, 'p', paragraph)
-  console.log('spanchecks',spanchecks)
+  // console.log('spanchecks',spanchecks)
   // console.log('markdown',Object.keys(spanchecks).map(k=>`[[${k}]]\n${spanchecks[k].join("\n")}`).join("\n\n"))
+  // console.log('embeddedimages',embeddedimages.join("\n"))
   return r
 
   function paragraph (p) {
@@ -87,10 +89,12 @@ function parse () {
         pattern.problem = p.innerText
         break
       case 'Pattern-styles_Normal':
-        pattern.discuss.push(resolve(p))
+        pattern.discuss.push({type:'paragraph', text:resolve(p)})
+        illustrate(p,url => pattern.discuss.push({type:'html', text:`<center><img width=60% src="${url}">`}))
         break
       case 'Pattern-styles_Solution':
         pattern.solution = resolve(p)
+        illustrate(p,url => pattern.illustration = ({type:'html', text:`<center><img width=60% src="${url}">`}))
         break
       case 'Pattern-styles_Downward-text':
         pattern.downward = resolve(p)
@@ -99,11 +103,26 @@ function parse () {
         pattern.notes.push(p.innerText)
         break
       case 'Pattern-styles_-----':
+        pattern.discuss.push({type:'html', text:'<center>❖ ❖ ❖</center>'})
+        break
+      case 'Images_Image-captions':
+        let i = p.previousElementSibling.querySelector('img')
+        if (i) {
+          embeddedimages.push(`[[${pattern.pattern}]] ${pattern.discuss.length} ${section.section}`)
+          let url = `http:/assets/image/${i.src.split('/').splice(-1)[0]}`
+          // insert image before the paragraph that preceeds to improve run-around
+          pattern.discuss.splice(-1,0,{type:'image', text:resolve(p), url})
+        }
+        break
+      case 'Pattern-styles_Normal-Italic--quote-':
+        console.log('blockquote',section.section, pattern.pattern)
+        pattern.discuss.push({type:'html', text:`<blockquote>${resolve(p)}</blockquote>`})
+        break
       case 'Pattern-styles_Therefore':
       case 'Pattern-styles_footnote-line':
         break
       default:
-        // console.log('   ', c)
+        console.log('   ', c)
     }
     // console.log('      ', c,p.innerText.substring(0,30))
   }
@@ -126,6 +145,15 @@ function parse () {
     })
     spancheck(result)
     return result
+  }
+
+  function illustrate (p,yes) {
+    // an illustration follows a normal paragraph and does not have a caption
+    let ii = p.nextElementSibling.querySelector('img')
+    let cc = p.nextElementSibling.nextElementSibling.getAttribute('class')
+    if (ii && cc && cc.split(' ')[0] != 'Images_Image-captions') {
+      yes(`http:/assets/image/${ii.src.split('/').splice(-1)[0]}`)
+    }
   }
 
   function spancheck (text) {
@@ -174,7 +202,7 @@ function generate(r) {
     let story = meta.body.map(s =>
       ({type:'markdown',text:`[[${s.section}]]\n${s.description}`}))
     story.push({type:'graphviz', text:'DOT FROM two-level-diagram'})
-    let p = {title: meta.meta, story, assets: []}
+    let p = {title: meta.meta, story}
     e.push(p)
   }
 
@@ -188,7 +216,7 @@ function generate(r) {
       story.push({type:'html',text:table(section.body)})
       story.push({type:'graphviz', text:'DOT FROM pattern-cluster-diagram'})
       // story.push({type:'code', text:JSON.stringify(section,null,2)}
-      e.push({title:section.section, story, assets:[]})
+      e.push({title:section.section, story})
     }
   }
 
@@ -201,9 +229,12 @@ function generate(r) {
         story.push({type:'html', text:`<center><img width=80% src="http:/assets/image/${pattern.image}">`})
         story.push({type:'markdown', text:`__${pattern.problem}__`})
         for (discussion of pattern.discuss) {
-          story.push({type: 'paragraph', text:discussion})
+          story.push(discussion)
         }
         story.push({type:'markdown', text:`__Therefore: ${pattern.solution}__`})
+        if (pattern.illustration) {
+          story.push(pattern.illustration)
+        }
         // story.push({type:'code', text:JSON.stringify(pattern,null,2)})
         story.push({type:'paragraph', text:pattern.downward})
         story.push({type:'pagefold',text:'notes'})
