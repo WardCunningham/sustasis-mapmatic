@@ -8,6 +8,11 @@ function build () {
   // debugger
   let r = parse()
   console.log('parse',r)
+
+  let d = dump(r)
+  console.log('dump', d)
+  download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
+
   let e = generate(r)
   console.log('export',e)
   download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
@@ -242,6 +247,40 @@ function generate(r) {
           story.push({type: 'paragraph', text:footnote})
         }
         e.push({title:pattern.pattern, story, assets:[]})
+      }
+    }
+  }
+  return e
+}
+
+function dump(r) {
+  let e = []
+
+  function line(obj) {
+    return Array.isArray(obj) ? JSON.stringify(obj,null,2) : obj
+  }
+
+  function page(title, obj, look) {
+    let text = Object.keys(obj)
+      .filter(k => k != 'body')
+      .map(k => `${k}: ${line(obj[k])}`)
+      .join("\n\n")
+    e.push({title, story:[
+      {type:'code', text},
+      {type:'markdown', text:(obj.body||[])
+        .map(look)
+        .map(t=>`- [[${t}]]`)
+        .join("\n")
+      }
+    ]})
+  }
+
+  for (let meta of r) {
+    page(meta.meta, meta, e=>e.section)
+    for (let section of meta.body) {
+      page(section.section, section, e=>e.pattern)
+      for (let pattern of section.body) {
+        page(pattern.pattern, pattern, e=>e)
       }
     }
   }
