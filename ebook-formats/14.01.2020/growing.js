@@ -9,9 +9,9 @@ function build () {
   let r = parse()
   console.log('parse',r)
 
-  let d = dump(r)
-  console.log('dump', d)
-  download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
+  // let d = dump(r)
+  // console.log('dump', d)
+  // download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
 
   let e = generate(r)
   console.log('export',e)
@@ -30,12 +30,48 @@ function parse () {
   let embeddedimages = []
 
   fix = {
-    "Form-Based Codes": "Form-Based Code",
      // from Walkable Multi-Mobility, Hospital
     "Sanctuary": "Pedestrian Sanctuary",
      // from Smart Av System
-    "Responsive Transportation Network Companies": "Responsive Transportation Network Company"
+    "Responsive Transportation Network Companies": "Responsive Transportation Network Company",
+    "Place And Differentiation": "Economies Of Place And Differentiation",
+    "Local Transport Area": "Local Transport Areas"
   }
+
+  apl = [
+    // without citation
+    'FOUR-STORY LIMIT',
+    'LOCAL TRANSPORT AREAS',
+    'SIX-FOOT BALCONY',
+    'PEDESTRIAN STREET',
+
+    // with citation
+    'BUS STOP',
+    'ARCADES',
+    'ROW HOUSES',
+    'ORNAMENT',
+
+    'ACTIVITY POCKET',
+    'CIRCULATION REALMS',
+    'CONNECTED BUILDINGS',
+    'DEEP REVEALS',
+    'DENSITY RING',
+    'FAMILY OF ENTRANCES',
+    'FRAMES AS THICKENED EDGES',
+    'GALLERY SURROUND',
+    'HIERARCHY OF OPEN SPACE',
+    'INTERIOR WINDOWS',
+    'MAIN GATEWAYS',
+    'OUTDOOR ROOM',
+    'PATHS AND GOALS',
+    'POOLS OF LIGHT',
+    'POSITIVE OUTDOOR SPACE',
+    'QUIET BACKS',
+    'SMALL PANES',
+    'SOFT TILE AND BRICK',
+    'SOLID DOORS WITH GLASS',
+    'WARM COLORS']
+    .reduce((a,b)=> (a[titlecase(b)]=true,a),{})
 
   // elipsis: . . . ⇒ …  (x45)
 
@@ -45,11 +81,12 @@ function parse () {
     let c = (p.getAttribute('class')||'null').split(' ')[0]
     p_classes[c] = (p_classes[c] || 0) + 1
     if (c == 'Pattern-styles_PATTERN-TITLE') {
-      titles[titlecase(p.innerText.split(/\. /)[1])] = true
+      let t = titlecase(p.innerText.split(/\. /)[1])
+      titles[t] = t
     }
   })
   console.log('classes', p_classes)
-  // console.log('titles',Object.keys(titles))
+  // console.log('titles',Object.keys(titles).sort())
 
   each(document, 'p', paragraph)
   // console.log('spanchecks',spanchecks)
@@ -91,7 +128,7 @@ function parse () {
         pattern.upward = resolve(p)
         break
       case 'Pattern-styles_Problem-statement':
-        pattern.problem = p.innerText
+        pattern.problem = resolve(p)
         break
       case 'Pattern-styles_Normal':
         pattern.discuss.push({type:'paragraph', text:resolve(p)})
@@ -105,7 +142,7 @@ function parse () {
         pattern.downward = resolve(p)
         break
       case 'Pattern-styles_footnote':
-        pattern.notes.push(p.innerText)
+        pattern.notes.push(resolve(p))
         break
       case 'Pattern-styles_-----':
         pattern.discuss.push({type:'html', text:'<center>❖ ❖ ❖</center>'})
@@ -132,23 +169,23 @@ function parse () {
     // console.log('      ', c,p.innerText.substring(0,30))
   }
 
+// cat site/pages/* | jq -r '.story[]|select(.type=="paragraph")|.text' | egrep '[A-Z]{5,}' | perl -pe 'print "\n"'
   function resolve (p) {
+    function convert(title, index) {
+      let link = titlecase(title)
+      link = fix[link]||link
+      link = titles[link]||titles[link.replace(/s$/,'')]||link
+      if (!(titles[link] || apl[link])) console.log('resolve', `<${title}>`, index)
+      return `[[${link}]] ${index} `
+    }
+
     result = p.innerText
-    each(p,'span',(x) => {
-      // m = x.innerText.match(/[A-Z0-9\.-]+( [A-Za-z0-9\.-]+)*/)
-      m = x.innerText.match(/[A-Z0-9\. -]+/)
-      if (m && m[0].length>5) {
-        let link = titlecase(m[0])
-        link = fix[link]||link
-        if (!titles[link]) {
-          console.log('bad link', link, p)
-        }
-        let plink = `[[${link}]]`
-        result = result.replace(m[0],plink)
-        // pattern.links.push(slug(link))
-      }
-    })
-    spancheck(result)
+    result = result.replace(
+      /([A-Z0-9-]{3,}( [A-Z-]{2,})+)( +\(.+?\))?/g,
+      (p0, p1, p2, p3) => convert(p1,p3))
+    result = result.replace(
+      /([A-Z-]{4,})( ?\(.+?\))/g,
+      (p0, p1, p2) => convert(p1,p2))
     return result
   }
 
@@ -158,15 +195,6 @@ function parse () {
     let cc = p.nextElementSibling.nextElementSibling.getAttribute('class')
     if (ii && cc && cc.split(' ')[0] != 'Images_Image-captions') {
       yes(`http:/assets/image/${ii.src.split('/').splice(-1)[0]}`)
-    }
-  }
-
-  function spancheck (text) {
-    const link = /[A-Z]{3,}[A-Z -]{5,}[A-Z]( *\(.*?\))?/
-    if (m = text.match(link)) {
-      let p = pattern.pattern
-      spanchecks[p] = spanchecks[p] || []
-      spanchecks[p].push(m[0])
     }
   }
 

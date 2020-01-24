@@ -17,10 +17,12 @@ end
 def expand export, dir
   if File.exist? export
     site = JSON.parse File.read(export)
+    items = 0
     site.each do |page|
-      puts title = page['title']
+      title = page['title']
       page['story'].each do |item|
         item['id'] = (rand*100000000000000).to_i.to_s
+        items += 1
       end
       page['journal'] = [{type:'create',item:deepcopy(page),date:@now}]
       File.open("#{dir}/pages/#{asSlug(title)}","w") do |file|
@@ -30,7 +32,7 @@ def expand export, dir
     File.delete export
     flush("#{dir}/status/sitemap.json")
     flush("#{dir}/status/sitemap.xml")
-    puts
+    puts "#{items} to #{dir} at #{Time.now()}"
   end
 end
 
