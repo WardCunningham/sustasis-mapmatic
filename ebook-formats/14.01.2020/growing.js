@@ -107,7 +107,7 @@ function parse () {
       case 'Section-styles_SECTION':
         // console.log(c, p.innerText)
         m = p.innerText.split(/\. /)
-        meta.body.push(section = {section:titlecase(m[1]),index:m[0],list:[],body:[]})
+        meta.body.push(section = {section:titlecase(m[1]),index:m[0],parent:meta,list:[],body:[]})
         break
       case 'Section-styles_Section-description':
         // console.log(c, p.innerText)
@@ -121,7 +121,7 @@ function parse () {
       case 'Pattern-styles_PATTERN-TITLE':
         // console.log(c, p.innerText)
         m = p.innerText.split(/\. /)
-        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0],discuss:[],notes:[],links:[]})
+        section.body.push(pattern = {pattern:titlecase(m[1]),index:m[0],parent:section,discuss:[],notes:[],links:[]})
         pattern.image = p.nextElementSibling.querySelector('img').src.split('/').slice(-1)[0]
         break
       case 'Pattern-styles_Upward-text':
@@ -179,7 +179,7 @@ function parse () {
       return `[[${link}]] ${index} `
     }
 
-    result = p.innerText
+    result = p.innerText.replace(/^\. \. \./,'…').replace(/\. \. \.$/,'…')
     result = result.replace(
       /([A-Z0-9-]{3,}( [A-Z-]{2,})+)( +\(.+?\))?/g,
       (p0, p1, p2, p3) => convert(p1,p3))
@@ -248,6 +248,7 @@ function generate(r) {
       story.push({type:'paragraph',text:section.description})
       story.push({type:'html',text:table(section.body)})
       story.push({type:'graphviz', text:'DOT FROM pattern-cluster-diagram'})
+      story.push({type:'paragraph', text:`See more [[${section.parent.meta}]]`})
       // story.push({type:'code', text:JSON.stringify(section,null,2)}
       e.push({title:section.section, story})
     }
@@ -274,6 +275,7 @@ function generate(r) {
         for (footnote of pattern.notes) {
           story.push({type: 'paragraph', text:footnote})
         }
+        story.push({type:'paragraph', text:`See more [[${pattern.parent.section}]]`})
         e.push({title:pattern.pattern, story, assets:[]})
       }
     }
