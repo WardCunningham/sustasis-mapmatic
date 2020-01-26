@@ -9,9 +9,9 @@ function build () {
   let r = parse()
   console.log('parse',r)
 
-  // let d = dump(r)
-  // console.log('dump', d)
-  // download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
+  let d = dump(r)
+  console.log('dump', d)
+  download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
 
   let e = generate(r)
   console.log('export',e)
@@ -28,6 +28,8 @@ function parse () {
   let meta, section, pattern
   let spanchecks = []
   let embeddedimages = []
+  window.cites = {} // title => index
+  window.urls = {} // title => likely url
 
   fix = {
      // from Walkable Multi-Mobility, Hospital
@@ -176,16 +178,23 @@ function parse () {
       link = fix[link]||link
       link = titles[link]||titles[link.replace(/s$/,'')]||link
       if (!(titles[link] || apl[link])) console.log('resolve', `<${title}>`, index)
-      return `[[${link}]] ${index} `
+      if (!(titles[link])) window.cites[title] = index||'omitted'
+      return `[[${link}]]`
     }
 
     result = p.innerText.replace(/^\. \. \./,'…').replace(/\. \. \.$/,'…')
+    // each(p,'span',(f)=>{if((f.getAttribute('class')||'').match(/Footnote/))console.log('footnote', f)})
     result = result.replace(
       /([A-Z0-9-]{3,}( [A-Z-]{2,})+)( +\(.+?\))?/g,
       (p0, p1, p2, p3) => convert(p1,p3))
     result = result.replace(
       /([A-Z-]{4,})( ?\(.+?\))/g,
       (p0, p1, p2) => convert(p1,p2))
+    result = result.replace(/([^\d]\.|complexity)(\d)( |$)/g,(p0,p1,p2,p3)=> p1+"⁰¹²³⁴⁵⁶⁷⁸⁹".substring(p2,1*p2+1)+p3)
+    result = result.replace(/^(\d)( )/g,(p0,p1,p2)=> "⁰¹²³⁴⁵⁶⁷⁸⁹".substring(p1,1*p1+1)+p2)
+    if (m = result.match(/([^ ]+)\.(com|org|gov|edu|net|eu|uk|cz|de)\b/)) window.urls[pattern.pattern]=m[0] // console.log('url', pattern.pattern, result)
+    if (m = result.match(/\bhttps?:\/\/[^ ]+/)) window.urls[pattern.pattern]=m[0]
+
     return result
   }
 
@@ -222,11 +231,19 @@ function table(pats) {
 
 function generate(r) {
   let e = []
+  let nav = {
+    "Growing Regions":"Places, networks and processes…",
+    "Patterns Of Scale":"Focusing on a single urban scale…",
+    "Patterns Of Multiple Scale":"Spanning a range of urban scales…",
+    "Patterns Of Process":"Generative tools and strategies…"
+  }
+
 
   // Growing Regions
   let story = r.map(x => {
     let count = x.body.reduce((s,e) => s + e.list.length, 0)
     return {type:'markdown',text:`[[${x.meta}]]\n${count} patterns…`}})
+  story.unshift({type:'paragraph', text:nav['Growing Regions']})
   story.push({type:'graphviz', text:'DOT FROM two-level-diagram'})
   e.push({title: 'Growing Regions', story})
 
@@ -235,6 +252,7 @@ function generate(r) {
     let story = meta.body.map(s =>
       ({type:'markdown',text:`[[${s.section}]]\n${s.description}`}))
     story.push({type:'graphviz', text:'DOT FROM two-level-diagram'})
+    story.unshift({type:'paragraph', text:nav[meta.meta]})
     let p = {title: meta.meta, story}
     e.push(p)
   }
@@ -314,6 +332,26 @@ function dump(r) {
       }
     }
   }
+
+  e.push({
+    title:'Patterns Cited',
+    story: Object.keys(window.cites)
+      .map(k=>({
+        type:'paragraph',
+        text:`[[${k}]] ${cites[k]}`
+      }))
+    })
+
+  e.push({
+    title:'Bare URLs',
+    story: Object.keys(urls)
+      .map(k=>({
+        type:'paragraph',
+        text:`[[${k}]] ${urls[k]}`
+      }))
+    })
+  e.slice(-1)[0].story.unshift({type:'paragraph',text:`${Object.keys(urls).length} pages with urls.`})
+
   return e
 }
 
