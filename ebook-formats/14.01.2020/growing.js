@@ -1,8 +1,14 @@
 // build wiki site from html of ebook
 // usage: <script src="growing.js"></script>
 
-console.log('starting')
-build()
+(function () {
+
+  let embeddedimages = []
+  let cites = {} // title => index
+  let urls = {} // title => likely url
+
+  console.log('starting')
+  build()
 
 function build () {
   // debugger
@@ -11,11 +17,12 @@ function build () {
 
   let d = dump(r)
   console.log('dump', d)
-  download(JSON.stringify(d, null, '  '), 'dump.json', 'text/plain')
 
   let e = generate(r)
-  console.log('export',e)
-  download(JSON.stringify(e, null, '  '), 'export.json', 'text/plain')
+  console.log('site',e)
+
+  let bundle = {dump: d, site: e}
+  download(JSON.stringify(bundle, null, '  '), 'bundle.json', 'text/plain')
 }
 
 function parse () {
@@ -26,10 +33,6 @@ function parse () {
 
   let r = []
   let meta, section, pattern
-  let spanchecks = []
-  let embeddedimages = []
-  window.cites = {} // title => index
-  window.urls = {} // title => likely url
 
   fix = {
      // from Walkable Multi-Mobility, Hospital
@@ -75,8 +78,6 @@ function parse () {
     'WARM COLORS']
     .reduce((a,b)=> (a[titlecase(b)]=true,a),{})
 
-  // elipsis: . . . ⇒ …  (x45)
-
   let p_classes = {}
   let titles = {}
   each(document, 'p', (p) => {
@@ -91,9 +92,6 @@ function parse () {
   // console.log('titles',Object.keys(titles).sort())
 
   each(document, 'p', paragraph)
-  // console.log('spanchecks',spanchecks)
-  // console.log('markdown',Object.keys(spanchecks).map(k=>`[[${k}]]\n${spanchecks[k].join("\n")}`).join("\n\n"))
-  // console.log('embeddedimages',embeddedimages.join("\n"))
   return r
 
   function paragraph (p) {
@@ -178,7 +176,7 @@ function parse () {
       link = fix[link]||link
       link = titles[link]||titles[link.replace(/s$/,'')]||link
       if (!(titles[link] || apl[link])) console.log('resolve', `<${title}>`, index)
-      if (!(titles[link])) window.cites[title] = index||'omitted'
+      if (!(titles[link])) cites[title] = index||'omitted'
       return `[[${link}]]`
     }
 
@@ -192,8 +190,8 @@ function parse () {
       (p0, p1, p2) => convert(p1,p2))
     result = result.replace(/([^\d]\.|complexity)(\d)( |$)/g,(p0,p1,p2,p3)=> p1+"⁰¹²³⁴⁵⁶⁷⁸⁹".substring(p2,1*p2+1)+p3)
     result = result.replace(/^(\d)( )/g,(p0,p1,p2)=> "⁰¹²³⁴⁵⁶⁷⁸⁹".substring(p1,1*p1+1)+p2)
-    if (m = result.match(/([^ ]+)\.(com|org|gov|edu|net|eu|uk|cz|de)\b/)) window.urls[pattern.pattern]=m[0] // console.log('url', pattern.pattern, result)
-    if (m = result.match(/\bhttps?:\/\/[^ ]+/)) window.urls[pattern.pattern]=m[0]
+    if (m = result.match(/([^ ]+)\.(com|org|gov|edu|net|eu|uk|cz|de)\b/)) urls[pattern.pattern]=m[0] // console.log('url', pattern.pattern, result)
+    if (m = result.match(/\bhttps?:\/\/[^ ]+/)) urls[pattern.pattern]=m[0]
 
     return result
   }
@@ -335,7 +333,7 @@ function dump(r) {
 
   e.push({
     title:'Patterns Cited',
-    story: Object.keys(window.cites)
+    story: Object.keys(cites)
       .map(k=>({
         type:'paragraph',
         text:`[[${k}]] ${cites[k]}`
@@ -371,3 +369,5 @@ function download(text, name, type) {
   a.download = name;
   a.click();
 }
+
+})()

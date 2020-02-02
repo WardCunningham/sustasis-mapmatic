@@ -14,9 +14,7 @@ def deepcopy obj
   JSON.parse JSON.generate obj
 end
 
-def expand export, dir
-  if File.exist? export
-    site = JSON.parse File.read(export)
+def expand site, dir
     items = 0
     site.each do |page|
       title = page['title']
@@ -29,15 +27,23 @@ def expand export, dir
         file.puts JSON.pretty_generate page
       end
     end
-    File.delete export
     flush("#{dir}/status/sitemap.json")
     flush("#{dir}/status/sitemap.xml")
     puts "#{items} to #{dir} at #{Time.now()}"
+end
+
+def bundle
+  download = "/Users/ward/Downloads/bundle.json"
+  if File.exist? download
+    bundle = JSON.parse File.read(download)
+    bundle.each do | dir, site |
+      expand site, dir
+    end
+    File.delete download
   end
 end
 
 while true
-  expand "/Users/ward/Downloads/export.json", "site"
-  expand "/Users/ward/Downloads/dump.json", "dump"
+  bundle
   sleep 1
 end
